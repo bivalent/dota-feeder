@@ -5,11 +5,6 @@ import numpy as np
 import telegram
 import logging
 
-
-# Steam Constants
-steamAPIKey = '55B92D3F605D8500F4FAC0C8FB21C685'
-steamMatchHistoryCall = 'https://api.steampowered.com/IDOTA2MATCH_570/GetMatchHistory/V001/?account_id={}&key=' + steamAPIKey
-
 # OpenDota Constants
 openDotaMatchInfoCall = 'https://api.opendota.com/api/players/{}/recentMatches'
 
