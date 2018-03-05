@@ -125,9 +125,10 @@ def loadFeederInformation():
         matches = resp.json()
         logger.debug(matches)
 
-        # Add up deaths for the feeder
+        # Clear old data & add up deaths for the feeder
         localDeathMax = 0
         feederDeathsPerGame[feeder] = []
+        feederDeaths[feeder] = 0
         for match in matches:
 
             feederDeaths[feeder] += match['deaths']
