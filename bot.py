@@ -6,7 +6,8 @@ import telegram
 import logging
 
 # OpenDota Constants
-openDotaMatchInfoCall = 'https://api.opendota.com/api/players/{}/recentMatches'
+matchesToJudge = 10
+openDotaMatchInfoCall = "https://api.opendota.com/api/players/{}/matches?limit=" + str(matchesToJudge)
 
 # One bot to rule them all
 bot = telegram.Bot(token='257069062:AAEuddnPDHuw5KlTLrL5eOiTEs9-xllqV9w')
@@ -144,7 +145,7 @@ def calculateWorstFeeder():
     feederList = sorted(feederDeaths, key=feederDeaths.get, reverse = True)
     logger.info(feederList)
 
-    feederString = "TOP FEEDERS OF THE WEEK (20 matches):\nRank\tName\tDeaths\n"
+    feederString = "TOP FEEDERS OF THE WEEK ({} matches):\nRank\tName\tDeaths\n".format(matchesToJudge)
     feederRank = 1
 
     for feeder in feederList:
