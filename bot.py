@@ -6,15 +6,18 @@ import telegram
 import logging
 
 # OpenDota Constants
-matchesToJudge = 10
-openDotaMatchInfoCall = "https://api.opendota.com/api/players/{}/matches?limit=" + str(matchesToJudge)
-
+openDotaMatchInfoCall = "https://api.opendota.com/api/players/{}/matches?limit={}"
+matchesToJudge = 15
+timeTable = "week"
 # One bot to rule them all
 bot = telegram.Bot(token='257069062:AAEuddnPDHuw5KlTLrL5eOiTEs9-xllqV9w')
 updater = Updater(token='257069062:AAEuddnPDHuw5KlTLrL5eOiTEs9-xllqV9w')
 dispatcher = updater.dispatcher
 
 # GLOBAL DICTS
+# match the number in range() with the amount of dicts on the left!
+feederDeaths, feederWorstMatchId, feederMaxDeathsInGame, feederDeathsPerGame = ({} for i in range(4))
+# I can't think of a way to easily automate these.
 feeders = {
     "Brent": '33167696',
     "Chris": '290262710',
@@ -25,45 +28,12 @@ feeders = {
     "Tucker": '364488795'
     }
 
-feederDeaths = {
-    "Brent": 0,
-    "Chris": 0,
-    "Elijah": 0,
-    "Eric": 0,
-    "Hannah": 0,
-    "Luis": 0,
-    "Tucker": 0
-    }
-
-feederWorstMatchId = {
-    "Brent": 0,
-    "Chris": 0,
-    "Elijah": 0,
-    "Eric": 0,
-    "Hannah": 0,
-    "Luis": 0,
-    "Tucker": 0
-}
-
-feederMaxDeathsInGame = {
-    "Brent": 0,
-    "Chris": 0,
-    "Elijah": 0,
-    "Eric": 0,
-    "Hannah": 0,
-    "Luis": 0,
-    "Tucker": 0
-}
-
-feederDeathsPerGame = {
-"Brent": [],
-"Chris": [],
-"Elijah": [],
-"Eric": [],
-"Hannah": [],
-"Luis": [],
-"Tucker": []
-}
+# initialize data dictionaries
+for name in feeders:
+    feederDeaths[name] = 0
+    feederWorstMatchId[name] = 0
+    feederMaxDeathsInGame[name] = 0
+    feederDeathsPerGame[name] = []
 
 # logging to diagnose my many issues. If only it worked in real life :v
 logging.basicConfig(level=logging.DEBUG,
@@ -73,7 +43,7 @@ logger = logging.getLogger()
 # print bot information. Good to know if we have a working bot.
 bot.getMe()
 
-
+# With global configurations set, start declaring/implementing starter bot commands.
 def hello(bot, update):
     update.message.reply_text(
         'Hello {}'.format(update.message.from_user.first_name))
@@ -85,8 +55,27 @@ def stop(bot, update):
     bot.send_message(chat_id=update.message.chat_id, text="Beep Doot. Time to go.")
 
 # --------- TIME TO START THE FEED PARSING ----------
-def topFeeds(bot, update):
+def topFeeds(bot, update, args):
     bot.send_message(chat_id=update.message.chat_id, text="Public humiliation is key to improvement.\n")
+
+    # declare and restore defaults.
+    global matchesToJudge
+    global timeTable
+
+    matchesToJudge = 15
+    timeTable = "week"
+
+    # determine scale of requested feed analysis
+    if args:
+        input = int(args[0])
+        if input > 0 or input < 50:
+            matchesToJudge = input
+            if input <= 5:
+                timeTable = "day"
+            elif input > 20 and input < 30:
+                timeTable = "last two weeks"
+            elif input > 30:
+                timeTable = "month"
 
     # Load up feeder information into global dictionaries
     loadFeederInformation()
@@ -95,14 +84,14 @@ def topFeeds(bot, update):
     feederString, worstFeeder = calculateWorstFeeder()
 
     # Display match information for worst feeder and his/her worst game!
-    bot.send_message(chat_id=update.message.chat_id, text=feederString)
-    congratsMessage = "Congratulations to {}! You are the feeder of the week.".format(worstFeeder)
+    bot.send_message(chat_id=update.message.chat_id, text=feederString, parse_mode=telegram.ParseMode.MARKDOWN)
+    congratsMessage = "Congratulations to *{}*! You are the feeder of the {}.".format(worstFeeder, timeTable)
     if worstFeeder == "Hannah":
         congratsMessage += "\nCheck out the game where she fed the worst ({} times!)".format(feederMaxDeathsInGame[worstFeeder])
     else:
         congratsMessage += "\nCheck out the game where he fed the worst ({} times!)".format(feederMaxDeathsInGame[worstFeeder])
 
-    bot.send_message(chat_id=update.message.chat_id, text=congratsMessage)
+    bot.send_message(chat_id=update.message.chat_id, text=congratsMessage, parse_mode=telegram.ParseMode.MARKDOWN)
     bot.send_message(chat_id=update.message.chat_id, text="https://www.dotabuff.com/matches/{}".format(feederWorstMatchId[worstFeeder]))
 
     # send chat a graph of feeding
@@ -112,7 +101,7 @@ def topFeeds(bot, update):
 def loadFeederInformation():
     for feeder in feeders:
         logger.info("Getting information for " + feeder)
-        resp = requests.get(openDotaMatchInfoCall.format(feeders[feeder]))
+        resp = requests.get(openDotaMatchInfoCall.format(feeders[feeder], matchesToJudge))
 
         if resp.status_code != 200:
             logger.error("Error getting player information | ID: " + feeder)
@@ -145,7 +134,7 @@ def calculateWorstFeeder():
     feederList = sorted(feederDeaths, key=feederDeaths.get, reverse = True)
     logger.info(feederList)
 
-    feederString = "TOP FEEDERS OF THE WEEK ({} matches):\nRank\tName\tDeaths\n".format(matchesToJudge)
+    feederString = "*TOP FEEDERS OF THE {}* ({} matches):\nRank\tName\tDeaths\n".format(timeTable.upper(), matchesToJudge)
     feederRank = 1
 
     for feeder in feederList:
@@ -183,4 +172,4 @@ updater.start_polling()
 # dispatcher handlers.
 dispatcher.add_handler(CommandHandler('start', start))
 dispatcher.add_handler(CommandHandler('hello', hello))
-dispatcher.add_handler(CommandHandler('topFeeds', topFeeds))
+dispatcher.add_handler(CommandHandler('topFeeds', topFeeds, pass_args=True))
