@@ -98,3 +98,4 @@ ENV/
 # mypy
 .mypy_cache/
 *.png
+.DS_Store
