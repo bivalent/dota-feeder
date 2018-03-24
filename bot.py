@@ -55,6 +55,35 @@ def stop(bot, update):
     bot.send_message(chat_id=update.message.chat_id, text="Beep Doot. Time to go.")
 
 # --------- TIME TO START THE FEED PARSING ----------
+def feederChart(bot, update, args):
+    # declare and restore defaults.
+    global matchesToJudge
+    global timeTable
+
+    matchesToJudge = 15
+    timeTable = "week"
+
+    # determine scale of requested feed analysis
+    if args:
+        input = int(args[0])
+        if input > 0 or input < 50:
+            matchesToJudge = input
+            if input <= 5:
+                timeTable = "day"
+            elif input > 20 and input < 30:
+                timeTable = "last two weeks"
+            else:
+                timeTable = "month"
+
+    # Load up feeder information into global dictionaries
+    loadFeederInformation()
+
+    # Create output in descending order
+    feederString, worstFeeder = calculateWorstFeeder()
+
+    # Display match information for worst feeder and his/her worst game!
+    bot.send_message(chat_id=update.message.chat_id, text=feederString, parse_mode=telegram.ParseMode.MARKDOWN)
+
 def topFeeds(bot, update, args):
     bot.send_message(chat_id=update.message.chat_id, text="Public humiliation is key to improvement.\n")
 
@@ -74,7 +103,7 @@ def topFeeds(bot, update, args):
                 timeTable = "day"
             elif input > 20 and input < 30:
                 timeTable = "last two weeks"
-            elif input > 30:
+            else:
                 timeTable = "month"
 
     # Load up feeder information into global dictionaries
@@ -108,7 +137,7 @@ def loadFeederInformation():
             bot.send_message(chat_id=update.message.chat_id, text="Error getting player information | ID: " + feeder)
 
         matches = resp.json()
-        logger.debug(matches)
+        logger.debug("Matches count for {}: {}".format(feeder, len(matches)))
 
         # Clear old data & add up deaths for the feeder
         localDeathMax = 0
@@ -134,15 +163,17 @@ def calculateWorstFeeder():
     feederList = sorted(feederDeaths, key=feederDeaths.get, reverse = True)
     logger.info(feederList)
 
-    feederString = "*TOP FEEDERS OF THE {}* ({} matches):\nRank\tName\tDeaths\n".format(timeTable.upper(), matchesToJudge)
+    feederString = "*TOP FEEDERS OF THE {}* ({} matches):".format(timeTable.upper(), matchesToJudge)
+    feederString = "`\n{:^5}{:^10}{:^5}\n".format("Rank", "Name", "Deaths")
     feederRank = 1
 
     for feeder in feederList:
       logger.info(feeder + " " + str(feederDeaths[feeder]))
-      feederString += "{}\t{}\t{}".format(str(feederRank), str(feeder), str(feederDeaths[feeder]))
+      feederString += "{:^5}{:^10}{:^5}".format(str(feederRank), str(feeder), str(feederDeaths[feeder]))
       feederString += "\n"
       feederRank = feederRank+1
 
+    feederString += "`"
     logger.info("FinalString: \n")
     logger.info(feederString)
 
@@ -173,3 +204,6 @@ updater.start_polling()
 dispatcher.add_handler(CommandHandler('start', start))
 dispatcher.add_handler(CommandHandler('hello', hello))
 dispatcher.add_handler(CommandHandler('topFeeds', topFeeds, pass_args=True))
+dispatcher.add_handler(CommandHandler('topfeeds', topFeeds, pass_args=True))
+dispatcher.add_handler(CommandHandler('feederChart', feederChart, pass_args=True))
+dispatcher.add_handler(CommandHandler('feederchart', feederChart, pass_args=True))
